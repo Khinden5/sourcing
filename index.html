@@ -155,8 +155,10 @@
       <h4>Size</h4><div id="fSize"></div>
       <h4>Region · shipping</h4><div id="fRegion"></div>
       <div style="margin-top:6px"><span class="fchip" style="background:var(--brand-soft);color:var(--brand-dark);font-weight:600" onclick="presetVintageLA()">★ Vintage · Los Angeles</span></div>
-      <h4>Vendor</h4>
-      <input class="search" id="qVendor" placeholder="Filter by vendor name…" oninput="debounceRender()">
+      <h4>Vendors</h4>
+      <input class="search" id="qVendor" placeholder="Search vendors…" oninput="debounceRender()">
+      <div id="fVendorSel" style="margin-top:6px"></div>
+      <h4>Vendor type</h4>
       <div id="fVendorTags"></div>
       <h4>More</h4><div id="fMore"></div>
       <button class="clearbtn" onclick="clearFilters()">Clear all filters</button>
@@ -174,7 +176,8 @@ let VENDORS=[], VBYID={}, TRADE={}, MANIFEST=null, KEY=null;
 const CHUNKS={};            // dept -> array of products (decrypted)
 let LOADING_DEPT=null;
 const S={view:'products', dept:null, sub:null, region:new Set(), vcats:new Set(), more:new Set(),
-  style:new Set(), era:new Set(), color:new Set(), size:new Set(), sort:'rel', shown:120, activeBoard:null};
+  style:new Set(), era:new Set(), color:new Set(), size:new Set(), vsel:new Set(), sort:'rel', shown:120, activeBoard:null};
+function togVendor(vid){ S.vsel.has(vid)?S.vsel.delete(vid):S.vsel.add(vid); S.shown=120; render(); }
 const STYLE_LIST=['Mid-Century Modern','Scandinavian','Japandi / Japanese','Art Deco','Industrial','Bohemian','Traditional','Rustic / Farmhouse','Coastal','Minimalist','Postmodern / Memphis','Brutalist','Organic Modern','French','Hollywood Regency','Bauhaus / Modernist'];
 const ERA_LIST=['Antique (pre-1920)','1920s–40s','Mid-Century (1950s–70s)','1980s–90s','Vintage (general)'];
 const COLOR_LIST=['White','Cream / Ivory','Beige / Tan','Brown / Wood','Black','Gray','Green','Blue','Red / Burgundy','Pink / Blush','Orange / Rust','Yellow / Gold','Brass / Bronze','Silver / Chrome','Copper','Purple','Multicolor'];
@@ -278,7 +281,7 @@ function chipRow(el,list,set,counts){
 }
 function clearFilters(){
   S.region.clear(); S.vcats.clear(); S.more.clear(); S.sub=null;
-  S.style.clear(); S.era.clear(); S.color.clear(); S.size.clear();
+  S.style.clear(); S.era.clear(); S.color.clear(); S.size.clear(); S.vsel.clear();
   ['q','qVendor','pMin','pMax'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
   S.shown=120; render();
 }
@@ -299,6 +302,7 @@ function currentProducts(){
   const mx=parseFloat(document.getElementById('pMax').value)||null;
   return pool.filter(p=>{
     if(S.sub&&p.c[1]!==S.sub)return false;
+    if(S.vsel.size&&!S.vsel.has(p.v))return false;
     if(S.style.size&&!(p.sty||[]).some(x=>S.style.has(x)))return false;
     if(S.era.size&&!S.era.has(p.era))return false;
     if(S.color.size&&!(p.col||[]).some(x=>S.color.has(x)))return false;
@@ -309,7 +313,6 @@ function currentProducts(){
     if(S.more.has('Has price')&&p.p==null)return false;
     if(mn!=null&&(p.p==null||p.p<mn))return false;
     if(mx!=null&&(p.p==null||p.p>mx))return false;
-    if(qv&&!p.vn.toLowerCase().includes(qv))return false;
     if(q){const hay=(p.t+' '+p.vn+' '+p.ty).toLowerCase(); if(!hay.includes(q))return false;}
     return true;
   });
@@ -362,6 +365,17 @@ function render(){
     if(p.sz)fc.sz[p.sz]=(fc.sz[p.sz]||0)+1;
   });
   const withCounts=(list,counts,sel)=>list.filter(x=>counts[x]||sel.has(x));
+  // vendor multi-select: top vendors in current pool, plus any selected; searchable via qVendor
+  const vCount={};
+  pool.forEach(p=>vCount[p.v]=(vCount[p.v]||0)+1);
+  const qv=(document.getElementById('qVendor')?.value||'').trim().toLowerCase();
+  let vlist=Object.entries(vCount).sort((a,b)=>b[1]-a[1]).map(([vid])=>vid);
+  if(qv) vlist=vlist.filter(vid=>(VBYID[vid]?.name||'').toLowerCase().includes(qv));
+  const shown=new Set([...S.vsel, ...vlist.slice(0, qv?40:15)]);
+  document.getElementById('fVendorSel').innerHTML=[...shown].map(vid=>{
+    const v=VBYID[vid]; if(!v)return '';
+    return `<span class="fchip ${S.vsel.has(vid)?'on':''}" onclick="togVendor('${vid}')">${esc(v.name.slice(0,28))}<span class="n">${vCount[vid]||0}</span></span>`;
+  }).join('')+(vlist.length>15&&!qv?`<div style="font-size:11px;color:var(--muted);margin-top:3px">Top 15 shown — type to search all ${vlist.length}</div>`:'');
   chipRow(document.getElementById('fStyle'),withCounts(STYLE_LIST,fc.sty,S.style),S.style,fc.sty);
   chipRow(document.getElementById('fEra'),withCounts(ERA_LIST,fc.era,S.era),S.era,fc.era);
   chipRow(document.getElementById('fColor'),withCounts(COLOR_LIST,fc.col,S.color),S.color,fc.col);
@@ -378,9 +392,9 @@ function render(){
 
 function renderLanding(m){
   const q=document.getElementById('q').value.trim();
-  if(q&&Object.keys(CHUNKS).length===Object.keys(MANIFEST).length){
-    // global search results
-    return renderGrid(m,currentProducts(),`Search: “${esc(q)}”`,'');
+  if((q||S.vsel.size)&&Object.keys(CHUNKS).length===Object.keys(MANIFEST).length){
+    const title=q?`Search: “${esc(q)}”`:[...S.vsel].map(v=>esc(VBYID[v]?.name||'')).join(' + ');
+    return renderGrid(m,currentProducts(),title,'');
   }
   m.innerHTML=`
     <h1 class="pagetitle">Departments</h1>
@@ -438,7 +452,7 @@ function pcard(p){
     ${p.img?`<img class="pimg" loading="lazy" src="${esc(p.img)}" alt="">`:`<div class="pimg"></div>`}
     <div class="pbody">
       <div class="ptitle">${esc(p.t)}</div>
-      <div class="pvendor">${esc(p.vn)}</div>
+      <div class="pvendor" style="cursor:pointer" title="Filter to this vendor" onclick="togVendor('${p.v}')">${esc(p.vn)} ${S.vsel.has(p.v)?'✓':''}</div>
       <div class="pprice">${money(p.p)} ${!p.a?'<span class="soldout">· sold out</span>':''}</div>
       <div class="pfoot">
         <button class="mini primary" onclick="addProductToBoard('${p.id}')">+ Board</button>
@@ -468,7 +482,7 @@ function renderVendors(m,base){
           ${t?`<div class="tradebox">${t.rep?`<b>${esc(t.rep)}</b><br>`:''}${t.email?`<a href="mailto:${esc(t.email)}">${esc(t.email)}</a><br>`:''}${t.phone?`${esc(t.phone)}<br>`:''}${t.disc!=null?`Trade: ${t.disc}% off`:''}</div>`:''}
           <div class="pfoot">
             ${v.url?`<a class="mini" href="${esc(v.url)}" target="_blank" rel="noopener">Site ↗</a>`:''}
-            ${v.productCount?`<button class="mini" onclick="document.getElementById('qVendor').value='${esc(v.name).replace(/'/g,"\\'")}';S.dept=null;go('products');ensureAll()">Browse products</button>`:''}
+            ${v.productCount?`<button class="mini" onclick="S.vsel.clear();S.vsel.add('${v.id}');S.dept=null;go('products');ensureAll()">Browse products</button>`:''}
             <button class="mini primary" onclick="addVendorToBoard('${v.id}')">+ Board</button>
           </div>
         </div>`;
