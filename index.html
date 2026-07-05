@@ -149,6 +149,10 @@
         <input type="number" id="pMin" placeholder="$ min" oninput="debounceRender()">
         <input type="number" id="pMax" placeholder="$ max" oninput="debounceRender()">
       </div>
+      <h4>Design style</h4><div id="fStyle"></div>
+      <h4>Era</h4><div id="fEra"></div>
+      <h4>Color</h4><div id="fColor"></div>
+      <h4>Size</h4><div id="fSize"></div>
       <h4>Region · shipping</h4><div id="fRegion"></div>
       <div style="margin-top:6px"><span class="fchip" style="background:var(--brand-soft);color:var(--brand-dark);font-weight:600" onclick="presetVintageLA()">★ Vintage · Los Angeles</span></div>
       <h4>Vendor</h4>
@@ -169,7 +173,12 @@
 let VENDORS=[], VBYID={}, TRADE={}, MANIFEST=null, KEY=null;
 const CHUNKS={};            // dept -> array of products (decrypted)
 let LOADING_DEPT=null;
-const S={view:'products', dept:null, sub:null, region:new Set(), vcats:new Set(), more:new Set(), sort:'rel', shown:120, activeBoard:null};
+const S={view:'products', dept:null, sub:null, region:new Set(), vcats:new Set(), more:new Set(),
+  style:new Set(), era:new Set(), color:new Set(), size:new Set(), sort:'rel', shown:120, activeBoard:null};
+const STYLE_LIST=['Mid-Century Modern','Scandinavian','Japandi / Japanese','Art Deco','Industrial','Bohemian','Traditional','Rustic / Farmhouse','Coastal','Minimalist','Postmodern / Memphis','Brutalist','Organic Modern','French','Hollywood Regency','Bauhaus / Modernist'];
+const ERA_LIST=['Antique (pre-1920)','1920s–40s','Mid-Century (1950s–70s)','1980s–90s','Vintage (general)'];
+const COLOR_LIST=['White','Cream / Ivory','Beige / Tan','Brown / Wood','Black','Gray','Green','Blue','Red / Burgundy','Pink / Blush','Orange / Rust','Yellow / Gold','Brass / Bronze','Silver / Chrome','Copper','Purple','Multicolor'];
+const SIZE_LIST=['3x5 & smaller','4x6','5x8','6x9','8x10','9x12','10x14 & larger','Runner','Round','Small (<24\")','Medium (24–48\")','Large (48–84\")','Extra Large (84\"+)'];
 const LS='sourcingSite.v1';
 let DB=(()=>{try{const d=JSON.parse(localStorage.getItem(LS)); if(d&&d.boards)return d;}catch(e){} return {boards:[]};})();
 function save(){localStorage.setItem(LS,JSON.stringify(DB));}
@@ -262,12 +271,14 @@ function chipRow(el,list,set,counts){
   }).join('');
   el.querySelectorAll('.fchip').forEach(c=>c.onclick=()=>{
     const v=c.dataset.v;
-    const s=el.id==='fRegion'?S.region:el.id==='fVendorTags'?S.vcats:S.more;
+    const map={fRegion:S.region,fVendorTags:S.vcats,fMore:S.more,fStyle:S.style,fEra:S.era,fColor:S.color,fSize:S.size};
+    const s=map[el.id]||S.more;
     s.has(v)?s.delete(v):s.add(v); S.shown=120; render();
   });
 }
 function clearFilters(){
   S.region.clear(); S.vcats.clear(); S.more.clear(); S.sub=null;
+  S.style.clear(); S.era.clear(); S.color.clear(); S.size.clear();
   ['q','qVendor','pMin','pMax'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
   S.shown=120; render();
 }
@@ -288,6 +299,10 @@ function currentProducts(){
   const mx=parseFloat(document.getElementById('pMax').value)||null;
   return pool.filter(p=>{
     if(S.sub&&p.c[1]!==S.sub)return false;
+    if(S.style.size&&!(p.sty||[]).some(x=>S.style.has(x)))return false;
+    if(S.era.size&&!S.era.has(p.era))return false;
+    if(S.color.size&&!(p.col||[]).some(x=>S.color.has(x)))return false;
+    if(S.size.size&&!S.size.has(p.sz))return false;
     if(S.region.size&&!S.region.has(p._region))return false;
     if(S.vcats.size){const v=VBYID[p.v]; if(!v||!v.categories.some(c=>S.vcats.has(c)))return false;}
     if(S.more.has('In stock only')&&!p.a)return false;
@@ -337,6 +352,20 @@ function render(){
   if(S.view==='vendors'){ baseV.forEach(v=>{if(v.region)regCounts[v.region]=(regCounts[v.region]||0)+1;}); }
   else{ currentProducts().forEach(p=>{if(p._region)regCounts[p._region]=(regCounts[p._region]||0)+1;}); }
   chipRow(document.getElementById('fRegion'),REGIONS,S.region,regCounts);
+  // facet counts from currently visible products
+  const pool=S.view==='products'?currentProducts():[];
+  const fc={sty:{},era:{},col:{},sz:{}};
+  pool.forEach(p=>{
+    (p.sty||[]).forEach(x=>fc.sty[x]=(fc.sty[x]||0)+1);
+    if(p.era)fc.era[p.era]=(fc.era[p.era]||0)+1;
+    (p.col||[]).forEach(x=>fc.col[x]=(fc.col[x]||0)+1);
+    if(p.sz)fc.sz[p.sz]=(fc.sz[p.sz]||0)+1;
+  });
+  const withCounts=(list,counts,sel)=>list.filter(x=>counts[x]||sel.has(x));
+  chipRow(document.getElementById('fStyle'),withCounts(STYLE_LIST,fc.sty,S.style),S.style,fc.sty);
+  chipRow(document.getElementById('fEra'),withCounts(ERA_LIST,fc.era,S.era),S.era,fc.era);
+  chipRow(document.getElementById('fColor'),withCounts(COLOR_LIST,fc.col,S.color),S.color,fc.col);
+  chipRow(document.getElementById('fSize'),withCounts(SIZE_LIST,fc.sz,S.size),S.size,fc.sz);
   const allTags=[...new Set(VENDORS.flatMap(v=>v.categories))].sort();
   chipRow(document.getElementById('fVendorTags'),allTags,S.vcats);
   chipRow(document.getElementById('fMore'),['In stock only','Has price'],S.more);
