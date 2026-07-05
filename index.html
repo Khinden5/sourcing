@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sourcing — Katelyn</title>
+<style>
+  :root{--ink:#241f1a;--muted:#6b6157;--line:#e5ddd2;--paper:#fbf8f3;--card:#fff;
+    --brand:#b5533a;--brand-dark:#8f3f2c;--brand-soft:#f3e2da;--chip:#f0eae0;--warn:#c9a227}
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{background:var(--paper);color:var(--ink);line-height:1.5;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;font-size:14px}
+  a{color:var(--brand)}
+  button{font-family:inherit;cursor:pointer}
+  input,select,textarea{font-family:inherit;font-size:13px}
+  .topbar{position:sticky;top:0;z-index:50;background:linear-gradient(160deg,#b5533a,#8f3f2c);color:#fff;
+    display:flex;align-items:center;gap:14px;padding:10px 18px;flex-wrap:wrap}
+  .topbar .logo{font-weight:800;font-size:17px}
+  .topbar .logo span{opacity:.7;font-weight:400}
+  .tabs{display:flex;gap:4px}
+  .tab{background:transparent;border:none;color:#fff;opacity:.75;font-size:14px;font-weight:600;padding:7px 13px;border-radius:8px}
+  .tab:hover{opacity:1}.tab.active{background:rgba(255,255,255,.18);opacity:1}
+  .topbar .spacer{flex:1}
+  .topbar .count{font-size:12px;opacity:.85}
+  .shell{display:flex;min-height:calc(100vh - 49px)}
+  .rail{width:252px;flex-shrink:0;border-right:1px solid var(--line);background:var(--card);
+    padding:16px 14px 40px;overflow-y:auto;max-height:calc(100vh - 49px);position:sticky;top:49px}
+  .rail h4{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:16px 0 6px}
+  .rail h4:first-child{margin-top:0}
+  .search{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--paper)}
+  .deptlink{display:flex;justify-content:space-between;padding:5px 8px;border-radius:7px;cursor:pointer;font-size:13px}
+  .deptlink:hover{background:var(--chip)}
+  .deptlink.on{background:var(--brand);color:#fff}
+  .deptlink .n{color:var(--muted);font-size:11.5px}
+  .deptlink.on .n{color:rgba(255,255,255,.75)}
+  .fchip{display:inline-block;background:var(--chip);border:1px solid transparent;color:var(--ink);
+    font-size:12px;padding:3px 10px;border-radius:20px;margin:2px 3px 2px 0;cursor:pointer;user-select:none}
+  .fchip:hover{border-color:var(--brand)}
+  .fchip.on{background:var(--brand);color:#fff}
+  .fchip .n{opacity:.55;font-size:10.5px;margin-left:3px}
+  .clearbtn{background:none;border:none;color:var(--brand);font-size:12px;padding:0;margin-top:10px;text-decoration:underline}
+  .pricerow{display:flex;gap:6px}
+  .pricerow input{width:50%;padding:6px 8px;border:1px solid var(--line);border-radius:8px}
+  .main{flex:1;padding:18px 22px 90px;min-width:0}
+  .toolrow{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+  .toolrow .res{font-size:13px;color:var(--muted)}
+  .toolrow select{padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:#fff}
+  .crumb{font-size:13px;color:var(--muted);margin-bottom:4px}
+  .crumb a{cursor:pointer;text-decoration:none}
+  .crumb a:hover{text-decoration:underline}
+  h1.pagetitle{font-size:24px;margin:0 0 4px;letter-spacing:-.01em}
+  .subrow{margin:8px 0 16px}
+  .dgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px;margin-top:10px}
+  .dtile{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 18px 14px;cursor:pointer;transition:box-shadow .12s}
+  .dtile:hover{box-shadow:0 4px 16px rgba(36,31,26,.1);border-color:var(--brand)}
+  .dtile h3{margin:0 0 2px;font-size:16.5px}
+  .dtile .dn{color:var(--muted);font-size:12.5px;margin-bottom:8px}
+  .dtile .subs{font-size:11.5px;color:var(--muted);line-height:1.7}
+  .pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px}
+  .pcard{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden;display:flex;flex-direction:column;transition:box-shadow .12s}
+  .pcard:hover{box-shadow:0 4px 16px rgba(36,31,26,.1)}
+  .pimg{aspect-ratio:1/1;background:var(--chip);width:100%;object-fit:cover;display:block}
+  .pbody{padding:10px 12px 12px;display:flex;flex-direction:column;gap:3px;flex:1}
+  .ptitle{font-weight:600;font-size:13.5px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .pvendor{font-size:11.5px;color:var(--muted)}
+  .pprice{font-weight:700;font-size:14px;margin-top:2px}
+  .soldout{color:#b03030;font-size:11px;font-weight:600}
+  .pfoot{display:flex;gap:6px;margin-top:auto;padding-top:8px}
+  .mini{font-size:11.5px;padding:4px 9px;border-radius:7px;border:1px solid var(--line);background:#fff;text-decoration:none;color:var(--ink)}
+  .mini:hover{border-color:var(--brand);color:var(--brand)}
+  .mini.primary{background:var(--brand);border-color:var(--brand);color:#fff}
+  .mini.primary:hover{background:var(--brand-dark)}
+  .vgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+  .vcard{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 15px;display:flex;flex-direction:column;gap:6px}
+  .vcard .vname{font-weight:700;font-size:14.5px}
+  .vcard .vloc{font-size:12px;color:var(--muted)}
+  .tag{display:inline-block;background:var(--chip);color:var(--muted);font-size:10.5px;padding:1px 8px;border-radius:20px;margin:1px 3px 1px 0}
+  .tag.price{background:var(--brand-soft);color:var(--brand-dark);font-weight:600}
+  .tag.count{background:#e7ece2;color:#55613f;font-weight:600}
+  .tradebox{background:#fdf6ec;border-left:2px solid var(--warn);border-radius:6px;padding:6px 9px;font-size:12px;margin-top:4px}
+  .boardbar{display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+  .boardsel{padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;font-size:14px;font-weight:600;max-width:280px}
+  .btn{padding:8px 14px;border-radius:8px;border:1px solid var(--line);background:#fff;font-size:13px;font-weight:600}
+  .btn:hover{border-color:var(--brand);color:var(--brand)}
+  .btn.primary{background:var(--brand);border-color:var(--brand);color:#fff}
+  .btn.primary:hover{background:var(--brand-dark);color:#fff}
+  .btn.danger:hover{border-color:#b03030;color:#b03030}
+  .budgetbox{margin-left:auto;text-align:right;font-size:13px}
+  .budgetbox .big{font-size:19px;font-weight:800}
+  .budgetbox .over{color:#b03030}
+  .bitem{display:flex;gap:12px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 14px;margin-bottom:10px}
+  .bitem img{width:64px;height:64px;object-fit:cover;border-radius:8px;background:var(--chip)}
+  .bitem .binfo{flex:1;min-width:0}
+  .bitem .bname{font-weight:700;font-size:13.5px}
+  .bitem .bvendor{font-size:12px;color:var(--muted)}
+  .bitem input.priceIn{width:90px;padding:5px 7px;border:1px solid var(--line);border-radius:7px;text-align:right}
+  .bitem input.roomIn{width:105px;padding:5px 7px;border:1px solid var(--line);border-radius:7px}
+  .status{font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;border:none}
+  .status.Considering{background:var(--chip);color:var(--muted)}
+  .status.Specified{background:var(--brand-soft);color:var(--brand-dark)}
+  .status.Ordered{background:#e7ece2;color:#55613f}
+  .empty{color:var(--muted);text-align:center;padding:60px 20px}
+  .empty .big{font-size:38px;margin-bottom:8px}
+  .loading{text-align:center;padding:80px 20px;color:var(--muted)}
+  .spin{display:inline-block;width:26px;height:26px;border:3px solid var(--line);border-top-color:var(--brand);border-radius:50%;animation:sp 1s linear infinite;margin-bottom:12px}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;
+    padding:10px 20px;border-radius:10px;font-size:13px;z-index:200;opacity:0;transition:opacity .2s;pointer-events:none}
+  .toast.show{opacity:1}
+  .loadmore{display:block;margin:22px auto;padding:10px 26px}
+  .exportsheet{display:none}
+  @media print{
+    body *{visibility:hidden}
+    .exportsheet,.exportsheet *{visibility:visible}
+    .exportsheet{display:block;position:absolute;inset:0;padding:26px;background:#fff}
+  }
+  .exportsheet h1{font-size:23px;margin:0 0 2px}
+  .exportsheet .esub{color:#666;font-size:13px;margin-bottom:16px}
+  .exportsheet .roomhead{font-size:15px;font-weight:800;margin:18px 0 8px;color:#8f3f2c}
+  .exportsheet .eitem{display:flex;gap:14px;border-bottom:1px solid #eee;padding:10px 0;align-items:center;break-inside:avoid}
+  .exportsheet .eitem img{width:86px;height:86px;object-fit:cover;border-radius:6px}
+  .exportsheet .eitem .et{font-weight:700}
+  .exportsheet .eitem .ev{color:#666;font-size:12px}
+  .exportsheet .eitem .ep{margin-left:auto;font-weight:700;white-space:nowrap}
+  @media(max-width:760px){.rail{display:none}.main{padding:14px 12px 90px}}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo">Sourcing<span> · Katelyn</span></div>
+  <div class="tabs">
+    <button class="tab active" data-view="products" onclick="go('products')">Products</button>
+    <button class="tab" data-view="vendors" onclick="go('vendors')">Vendors</button>
+    <button class="tab" data-view="boards" onclick="go('boards')">Boards</button>
+  </div>
+  <div class="spacer"></div>
+  <div class="count" id="topCount"></div>
+</div>
+
+<div class="shell">
+  <aside class="rail" id="rail" style="display:none">
+    <input class="search" id="q" placeholder="Search everything…" oninput="debounceRender()">
+    <div id="railDepts"></div>
+    <div id="railFilters">
+      <h4>Price</h4>
+      <div class="pricerow">
+        <input type="number" id="pMin" placeholder="$ min" oninput="debounceRender()">
+        <input type="number" id="pMax" placeholder="$ max" oninput="debounceRender()">
+      </div>
+      <h4>Region · shipping</h4><div id="fRegion"></div>
+      <div style="margin-top:6px"><span class="fchip" style="background:var(--brand-soft);color:var(--brand-dark);font-weight:600" onclick="presetVintageLA()">★ Vintage · Los Angeles</span></div>
+      <h4>Vendor</h4>
+      <input class="search" id="qVendor" placeholder="Filter by vendor name…" oninput="debounceRender()">
+      <div id="fVendorTags"></div>
+      <h4>More</h4><div id="fMore"></div>
+      <button class="clearbtn" onclick="clearFilters()">Clear all filters</button>
+    </div>
+  </aside>
+  <main class="main" id="main"><div class="loading"><div class="spin"></div><br>Loading…</div></main>
+</div>
+
+<div id="modalHost"></div>
+<div class="toast" id="toast"></div>
+<div class="exportsheet" id="exportsheet"></div>
+
+<script>
+let VENDORS=[], VBYID={}, TRADE={}, MANIFEST=null, KEY=null;
+const CHUNKS={};            // dept -> array of products (decrypted)
+let LOADING_DEPT=null;
+const S={view:'products', dept:null, sub:null, region:new Set(), vcats:new Set(), more:new Set(), sort:'rel', shown:120, activeBoard:null};
+const LS='sourcingSite.v1';
+let DB=(()=>{try{const d=JSON.parse(localStorage.getItem(LS)); if(d&&d.boards)return d;}catch(e){} return {boards:[]};})();
+function save(){localStorage.setItem(LS,JSON.stringify(DB));}
+function uid(){return Math.random().toString(36).slice(2,10);}
+function esc(s){return (s==null?'':String(s)).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(t._x);t._x=setTimeout(()=>t.classList.remove('show'),1900);}
+function money(n){return n==null?'—':'$'+Number(n).toLocaleString(undefined,{maximumFractionDigits:0});}
+const REGIONS=['Los Angeles','California (other)','US West','US East','US South','US Midwest','US (other)','UK','Europe','International'];
+const b64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
+
+/* ---------- crypto ---------- */
+async function deriveKey(pass,salt){
+  const km=await crypto.subtle.importKey('raw',new TextEncoder().encode(pass),'PBKDF2',false,['deriveKey']);
+  return crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:150000,hash:'SHA-256'},km,{name:'AES-GCM',length:256},false,['decrypt']);
+}
+async function decryptWith(key,blob){
+  const pt=await crypto.subtle.decrypt({name:'AES-GCM',iv:b64(blob.iv)},key,b64(blob.ct));
+  return JSON.parse(new TextDecoder().decode(pt));
+}
+function gateHTML(msg){
+  return `<div style="max-width:340px;margin:12vh auto;text-align:center">
+    <div style="font-size:40px;margin-bottom:10px">🔒</div>
+    <h2 style="margin:0 0 6px">Private tool</h2>
+    <p style="color:var(--muted);font-size:13px;margin:0 0 16px">${msg||'Enter your passcode to unlock the catalog.'}</p>
+    <input class="search" type="password" id="gatePass" placeholder="Passcode" style="text-align:center;font-size:16px" onkeydown="if(event.key==='Enter')tryUnlock()">
+    <button class="btn primary" style="width:100%;margin-top:10px" onclick="tryUnlock()">Unlock</button>
+  </div>`;
+}
+async function unlockWith(pass){
+  const cb=await fetch('data/catalog.enc.json').then(r=>r.json());
+  const key=await deriveKey(pass,b64(cb.salt));
+  const cat=await decryptWith(key,cb);   // throws on wrong pass
+  KEY=key;
+  VENDORS=cat.vendors; TRADE=cat.trade||{}; MANIFEST=cat.depts;
+  VENDORS.forEach(v=>VBYID[v.id]=v);
+  localStorage.setItem('sourcingSite.pass',pass);
+  document.getElementById('rail').style.display='';
+  render();
+}
+async function tryUnlock(){
+  const pass=document.getElementById('gatePass').value; if(!pass)return;
+  document.getElementById('main').innerHTML='<div class="loading"><div class="spin"></div><br>Decrypting…</div>';
+  try{ await unlockWith(pass); }
+  catch(e){ document.getElementById('main').innerHTML=gateHTML('Wrong passcode — try again.'); }
+}
+async function boot(){
+  const saved=localStorage.getItem('sourcingSite.pass');
+  if(saved){ try{ await unlockWith(saved); return; }catch(e){ localStorage.removeItem('sourcingSite.pass'); } }
+  document.getElementById('main').innerHTML=gateHTML();
+}
+boot();
+
+/* ---------- chunk loading ---------- */
+async function loadDept(dept){
+  if(CHUNKS[dept])return CHUNKS[dept];
+  const meta=MANIFEST[dept]; if(!meta)return [];
+  const blob=await fetch('data/'+meta.file).then(r=>r.json());
+  const prods=await decryptWith(KEY,blob);
+  prods.forEach(p=>{const v=VBYID[p.v]; p._region=v?v.region:null;});
+  CHUNKS[dept]=prods;
+  return prods;
+}
+async function ensureDept(dept){
+  if(CHUNKS[dept])return;
+  LOADING_DEPT=dept;
+  document.getElementById('main').innerHTML='<div class="loading"><div class="spin"></div><br>Loading '+esc(dept)+'…</div>';
+  await loadDept(dept);
+  LOADING_DEPT=null;
+  render();
+}
+async function ensureAll(){
+  const missing=Object.keys(MANIFEST).filter(d=>!CHUNKS[d]);
+  if(!missing.length)return;
+  document.getElementById('main').innerHTML='<div class="loading"><div class="spin"></div><br>Loading full catalog for search…</div>';
+  await Promise.all(missing.map(loadDept));
+  render();
+}
+
+/* ---------- filters ---------- */
+let _deb;
+function debounceRender(){clearTimeout(_deb);_deb=setTimeout(()=>{S.shown=120;
+  const q=document.getElementById('q').value.trim();
+  if(q&&S.view==='products'&&!S.dept){ensureAll().then(render);}else{render();}
+},250);}
+function chipRow(el,list,set,counts){
+  el.innerHTML=list.map(x=>{
+    const n=counts?`<span class="n">${counts[x]||0}</span>`:'';
+    return `<span class="fchip ${set.has(x)?'on':''}" data-v="${esc(x)}">${esc(x)}${n}</span>`;
+  }).join('');
+  el.querySelectorAll('.fchip').forEach(c=>c.onclick=()=>{
+    const v=c.dataset.v;
+    const s=el.id==='fRegion'?S.region:el.id==='fVendorTags'?S.vcats:S.more;
+    s.has(v)?s.delete(v):s.add(v); S.shown=120; render();
+  });
+}
+function clearFilters(){
+  S.region.clear(); S.vcats.clear(); S.more.clear(); S.sub=null;
+  ['q','qVendor','pMin','pMax'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  S.shown=120; render();
+}
+function presetVintageLA(){
+  clearFilters(); S.dept=null;
+  S.vcats.add('Antiques & Vintage'); S.vcats.add('Marketplace & Resale');
+  S.region.add('Los Angeles');
+  go('vendors');
+}
+function vendorMatchesTags(v){ return !S.vcats.size || v.categories.some(c=>S.vcats.has(c)); }
+function currentProducts(){
+  let pool=[];
+  if(S.dept){ pool=CHUNKS[S.dept]||[]; }
+  else{ pool=Object.values(CHUNKS).flat(); }
+  const q=document.getElementById('q').value.trim().toLowerCase();
+  const qv=document.getElementById('qVendor').value.trim().toLowerCase();
+  const mn=parseFloat(document.getElementById('pMin').value)||null;
+  const mx=parseFloat(document.getElementById('pMax').value)||null;
+  return pool.filter(p=>{
+    if(S.sub&&p.c[1]!==S.sub)return false;
+    if(S.region.size&&!S.region.has(p._region))return false;
+    if(S.vcats.size){const v=VBYID[p.v]; if(!v||!v.categories.some(c=>S.vcats.has(c)))return false;}
+    if(S.more.has('In stock only')&&!p.a)return false;
+    if(S.more.has('Has price')&&p.p==null)return false;
+    if(mn!=null&&(p.p==null||p.p<mn))return false;
+    if(mx!=null&&(p.p==null||p.p>mx))return false;
+    if(qv&&!p.vn.toLowerCase().includes(qv))return false;
+    if(q){const hay=(p.t+' '+p.vn+' '+p.ty).toLowerCase(); if(!hay.includes(q))return false;}
+    return true;
+  });
+}
+function filteredVendors(){
+  const q=(document.getElementById('q')?.value||'').trim().toLowerCase();
+  const qv=(document.getElementById('qVendor')?.value||'').trim().toLowerCase();
+  return VENDORS.filter(v=>{
+    if(S.vcats.size&&!v.categories.some(c=>S.vcats.has(c)))return false;
+    if(S.region.size&&!S.region.has(v.region))return false;
+    if(qv&&!v.name.toLowerCase().includes(qv))return false;
+    if(q){const hay=(v.name+' '+(v.location||'')+' '+(v.notes||'')+' '+v.categories.join(' ')).toLowerCase(); if(!hay.includes(q))return false;}
+    return true;
+  });
+}
+
+/* ---------- routing / render ---------- */
+function go(view){S.view=view;S.shown=120;
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.view===view));
+  document.getElementById('rail').style.display=(view==='boards')?'none':'';
+  render();
+}
+async function openDept(dept){S.dept=dept;S.sub=null;S.shown=120;await ensureDept(dept);render();}
+function openSub(sub){S.sub=(S.sub===sub?null:sub);S.shown=120;render();}
+function backToDepts(){S.dept=null;S.sub=null;render();}
+
+function render(){
+  if(!MANIFEST)return;
+  if(LOADING_DEPT)return;
+  // rail: departments
+  const rd=document.getElementById('railDepts');
+  const totalAll=Object.values(MANIFEST).reduce((s,m)=>s+m.total,0);
+  rd.innerHTML='<h4>Departments</h4>'+
+    `<div class="deptlink ${!S.dept&&S.view==='products'?'on':''}" onclick="go('products');backToDepts()"><span>All products</span><span class="n">${totalAll.toLocaleString()}</span></div>`+
+    Object.entries(MANIFEST).sort((a,b)=>b[1].total-a[1].total).map(([d,m])=>
+      `<div class="deptlink ${S.dept===d?'on':''}" onclick="go('products');openDept('${esc(d).replace(/'/g,"\\'")}')"><span>${esc(d)}</span><span class="n">${m.total.toLocaleString()}</span></div>`).join('');
+  // rail filters
+  const baseV=filteredVendors();
+  const regCounts={};
+  if(S.view==='vendors'){ baseV.forEach(v=>{if(v.region)regCounts[v.region]=(regCounts[v.region]||0)+1;}); }
+  else{ currentProducts().forEach(p=>{if(p._region)regCounts[p._region]=(regCounts[p._region]||0)+1;}); }
+  chipRow(document.getElementById('fRegion'),REGIONS,S.region,regCounts);
+  const allTags=[...new Set(VENDORS.flatMap(v=>v.categories))].sort();
+  chipRow(document.getElementById('fVendorTags'),allTags,S.vcats);
+  chipRow(document.getElementById('fMore'),['In stock only','Has price'],S.more);
+  document.getElementById('topCount').textContent=`${totalAll.toLocaleString()} products · ${VENDORS.length.toLocaleString()} vendors`;
+  const m=document.getElementById('main');
+  if(S.view==='products'){ S.dept?renderDeptPage(m):renderLanding(m); }
+  else if(S.view==='vendors') renderVendors(m,baseV);
+  else renderBoards(m);
+}
+
+function renderLanding(m){
+  const q=document.getElementById('q').value.trim();
+  if(q&&Object.keys(CHUNKS).length===Object.keys(MANIFEST).length){
+    // global search results
+    return renderGrid(m,currentProducts(),`Search: “${esc(q)}”`,'');
+  }
+  m.innerHTML=`
+    <h1 class="pagetitle">Departments</h1>
+    <div class="crumb">Every item for sale across all your vendors, sorted into pages.</div>
+    <div class="dgrid">
+      ${Object.entries(MANIFEST).sort((a,b)=>b[1].total-a[1].total).map(([d,meta])=>`
+        <div class="dtile" onclick="openDept('${esc(d).replace(/'/g,"\\'")}')">
+          <h3>${esc(d)}</h3>
+          <div class="dn">${meta.total.toLocaleString()} items</div>
+          <div class="subs">${Object.entries(meta.subs).sort((a,b)=>b[1]-a[1]).slice(0,4).map(([s,n])=>`${esc(s)} (${n})`).join(' · ')}</div>
+        </div>`).join('')}
+    </div>`;
+}
+function renderDeptPage(m){
+  const meta=MANIFEST[S.dept];
+  const list=sortProducts(currentProducts());
+  const subs=Object.entries(meta.subs).sort((a,b)=>b[1]-a[1]);
+  m.innerHTML=`
+    <div class="crumb"><a onclick="backToDepts()">Departments</a> / ${esc(S.dept)}${S.sub?` / ${esc(S.sub)}`:''}</div>
+    <h1 class="pagetitle">${esc(S.sub||S.dept)}</h1>
+    <div class="subrow">${subs.map(([s,n])=>`<span class="fchip ${S.sub===s?'on':''}" onclick="openSub('${esc(s).replace(/'/g,"\\'")}')">${esc(s)}<span class="n">${n}</span></span>`).join('')}</div>
+    ${gridHTML(list)}`;
+}
+function renderGrid(m,list,title,crumb){
+  list=sortProducts(list);
+  m.innerHTML=`${crumb}<h1 class="pagetitle">${title}</h1>${gridHTML(list)}`;
+}
+function gridHTML(list){
+  const slice=list.slice(0,S.shown);
+  return `
+    <div class="toolrow">
+      <span class="res"><strong>${list.length.toLocaleString()}</strong> items from <strong>${new Set(list.map(p=>p.v)).size}</strong> vendors</span>
+      <select onchange="S.sort=this.value;render()">
+        <option value="rel" ${S.sort==='rel'?'selected':''}>Sort: Default</option>
+        <option value="priceAsc" ${S.sort==='priceAsc'?'selected':''}>Price ↑</option>
+        <option value="priceDesc" ${S.sort==='priceDesc'?'selected':''}>Price ↓</option>
+        <option value="name" ${S.sort==='name'?'selected':''}>Name</option>
+        <option value="vendor" ${S.sort==='vendor'?'selected':''}>Vendor</option>
+      </select>
+    </div>
+    <div class="pgrid">${slice.map(pcard).join('')}</div>
+    ${list.length>S.shown?`<button class="btn loadmore" onclick="S.shown+=120;render()">Show more (${(list.length-S.shown).toLocaleString()} left)</button>`:''}
+    ${list.length===0?'<div class="empty"><div class="big">🔍</div>Nothing here — loosen a filter.</div>':''}`;
+}
+function sortProducts(list){
+  const s=S.sort,c=[...list];
+  if(s==='priceAsc')c.sort((a,b)=>(a.p??1e12)-(b.p??1e12));
+  if(s==='priceDesc')c.sort((a,b)=>(b.p??-1)-(a.p??-1));
+  if(s==='name')c.sort((a,b)=>a.t.localeCompare(b.t));
+  if(s==='vendor')c.sort((a,b)=>a.vn.localeCompare(b.vn));
+  return c;
+}
+function pcard(p){
+  return `<div class="pcard">
+    ${p.img?`<img class="pimg" loading="lazy" src="${esc(p.img)}" alt="">`:`<div class="pimg"></div>`}
+    <div class="pbody">
+      <div class="ptitle">${esc(p.t)}</div>
+      <div class="pvendor">${esc(p.vn)}</div>
+      <div class="pprice">${money(p.p)} ${!p.a?'<span class="soldout">· sold out</span>':''}</div>
+      <div class="pfoot">
+        <button class="mini primary" onclick="addProductToBoard('${p.id}')">+ Board</button>
+        <a class="mini" href="${esc(p.u)}" target="_blank" rel="noopener">View ↗</a>
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderVendors(m,base){
+  const list=[...base].sort((a,b)=>a.name.localeCompare(b.name));
+  m.innerHTML=`
+    <div class="toolrow"><span class="res"><strong>${list.length.toLocaleString()}</strong> vendors · trade info in amber (never in exports)</span></div>
+    <div class="vgrid">
+      ${list.map(v=>{
+        const t=TRADE[v.id];
+        return `<div class="vcard">
+          <div class="vname">${esc(v.name)}</div>
+          ${v.location?`<div class="vloc">${esc(v.location)}</div>`:''}
+          <div>
+            ${v.price?`<span class="tag price">${esc(v.price)}</span>`:''}
+            ${v.productCount?`<span class="tag count">${v.productCount} products</span>`:''}
+            ${v.categories.slice(0,3).map(c=>`<span class="tag">${esc(c)}</span>`).join('')}
+            ${v.leadTime?`<span class="tag">⏱ ${esc(v.leadTime)}</span>`:''}
+          </div>
+          ${v.notes?`<div style="font-size:12px;color:var(--muted);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden">${esc(v.notes)}</div>`:''}
+          ${t?`<div class="tradebox">${t.rep?`<b>${esc(t.rep)}</b><br>`:''}${t.email?`<a href="mailto:${esc(t.email)}">${esc(t.email)}</a><br>`:''}${t.phone?`${esc(t.phone)}<br>`:''}${t.disc!=null?`Trade: ${t.disc}% off`:''}</div>`:''}
+          <div class="pfoot">
+            ${v.url?`<a class="mini" href="${esc(v.url)}" target="_blank" rel="noopener">Site ↗</a>`:''}
+            ${v.productCount?`<button class="mini" onclick="document.getElementById('qVendor').value='${esc(v.name).replace(/'/g,"\\'")}';S.dept=null;go('products');ensureAll()">Browse products</button>`:''}
+            <button class="mini primary" onclick="addVendorToBoard('${v.id}')">+ Board</button>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`;
+}
+
+/* ---------- boards ---------- */
+function boardById(id){return DB.boards.find(b=>b.id===id);}
+function activeBoard(){if(S.activeBoard&&boardById(S.activeBoard))return boardById(S.activeBoard);return DB.boards[0]||null;}
+function newBoard(){
+  const name=prompt('Board name (client / room):',''); if(!name)return null;
+  const budget=parseFloat(prompt('Budget target (optional, $):','')||'')||null;
+  const b={id:uid(),name,budget,items:[]}; DB.boards.push(b); S.activeBoard=b.id; save(); render(); return b;
+}
+function findProduct(pid){
+  for(const arr of Object.values(CHUNKS)){const p=arr.find(x=>x.id===pid); if(p)return p;}
+  return null;
+}
+function addProductToBoard(pid){
+  let b=activeBoard(); if(!b){b=newBoard(); if(!b)return;}
+  const p=findProduct(pid); if(!p)return;
+  b.items.push({id:uid(),kind:'product',refId:pid,name:p.t,vendorName:p.vn,img:p.img,room:'',price:p.p,status:'Considering',url:p.u,note:''});
+  save(); toast(`Added → ${b.name}`); if(S.view==='boards')render();
+}
+function addVendorToBoard(vid){
+  let b=activeBoard(); if(!b){b=newBoard(); if(!b)return;}
+  const v=VBYID[vid]; if(!v)return;
+  b.items.push({id:uid(),kind:'vendor',refId:vid,name:v.name,vendorName:v.name,img:'',room:'',price:null,status:'Considering',url:v.url||'',note:'(vendor — pick item)'});
+  save(); toast(`Added ${v.name} → ${b.name}`); if(S.view==='boards')render();
+}
+function renderBoards(m){
+  const b=activeBoard();
+  const opts=DB.boards.map(x=>`<option value="${x.id}" ${b&&x.id===b.id?'selected':''}>${esc(x.name)}</option>`).join('');
+  const total=b?b.items.reduce((s,i)=>s+(i.price||0),0):0;
+  const over=b&&b.budget&&total>b.budget;
+  m.innerHTML=`
+    <div class="boardbar">
+      <select class="boardsel" onchange="S.activeBoard=this.value;render()">${opts||'<option>No boards yet</option>'}</select>
+      <button class="btn" onclick="newBoard()">+ New board</button>
+      ${b?`<button class="btn" onclick="renameBoard()">Rename / budget</button>
+      <button class="btn danger" onclick="deleteBoard()">Delete</button>
+      <button class="btn" onclick="exportClipList()">Clip list</button>
+      <button class="btn primary" onclick="exportSpec()">Spec sheet</button>`:''}
+      ${b?`<div class="budgetbox"><div class="big ${over?'over':''}">${money(total)}</div>
+        <div class="${over?'over':''}">${b.budget?`of ${money(b.budget)} target${over?' — OVER':''}`:'no target set'}</div></div>`:''}
+    </div>
+    ${!b?`<div class="empty"><div class="big">📋</div>No boards yet — hit <b>+ New board</b>.</div>`
+    : b.items.length===0?`<div class="empty"><div class="big">🕳️</div>Empty board. Browse <b>Products</b> and hit <b>+ Board</b>.</div>`
+    : b.items.map(bitem).join('')}`;
+}
+function bitem(i){
+  return `<div class="bitem">
+    ${i.img?`<img loading="lazy" src="${esc(i.img)}">`:`<div style="width:64px;height:64px;border-radius:8px;background:var(--chip)"></div>`}
+    <div class="binfo">
+      <div class="bname">${esc(i.name)}</div>
+      <div class="bvendor">${esc(i.vendorName)} ${i.url?` · <a href="${esc(i.url)}" target="_blank" rel="noopener">view ↗</a>`:''}</div>
+      <input type="text" placeholder="note…" value="${esc(i.note)}" style="width:100%;margin-top:4px;padding:4px 8px;border:1px solid var(--line);border-radius:7px;font-size:12px" onchange="editItem('${i.id}','note',this.value)">
+    </div>
+    <input class="roomIn" placeholder="Room" value="${esc(i.room)}" onchange="editItem('${i.id}','room',this.value)">
+    <input class="priceIn" type="number" placeholder="$" value="${i.price!=null?i.price:''}" onchange="editItem('${i.id}','price',parseFloat(this.value)||null)">
+    <button class="status ${i.status}" onclick="cycleStatus('${i.id}')">${i.status}</button>
+    <button class="mini" onclick="removeItem('${i.id}')">✕</button>
+  </div>`;
+}
+function editItem(id,k,v){const b=activeBoard();const i=b.items.find(x=>x.id===id);if(i){i[k]=v;save();if(k==='price')render();}}
+function cycleStatus(id){const o=['Considering','Specified','Ordered'];const b=activeBoard();const i=b.items.find(x=>x.id===id);i.status=o[(o.indexOf(i.status)+1)%3];save();render();}
+function removeItem(id){const b=activeBoard();b.items=b.items.filter(x=>x.id!==id);save();render();}
+function renameBoard(){const b=activeBoard();if(!b)return;const n=prompt('Board name:',b.name);if(n)b.name=n;
+  const bud=prompt('Budget target ($, blank for none):',b.budget||'');b.budget=parseFloat(bud)||null;save();render();}
+function deleteBoard(){const b=activeBoard();if(!b)return;if(!confirm(`Delete "${b.name}"?`))return;
+  DB.boards=DB.boards.filter(x=>x.id!==b.id);S.activeBoard=null;save();render();}
+function exportClipList(){
+  const b=activeBoard();if(!b)return;
+  const urls=b.items.filter(i=>i.url).map(i=>`${i.name} — ${i.url}`);
+  const no=b.items.filter(i=>!i.url).map(i=>i.name);
+  let t=`CLIP LIST — ${b.name}\n${'='.repeat(30)}\n\n${urls.join('\n')}`;
+  if(no.length)t+=`\n\nNo URL:\n${no.join('\n')}`;
+  navigator.clipboard.writeText(t).then(()=>toast('Clip list copied'));
+}
+function exportSpec(){
+  const b=activeBoard();if(!b)return;
+  const rooms={};
+  b.items.forEach(i=>{const r=i.room||'Unassigned';(rooms[r]=rooms[r]||[]).push(i);});
+  const el=document.getElementById('exportsheet');
+  el.innerHTML=`
+    <h1>${esc(b.name)}</h1>
+    <div class="esub">Specification · ${new Date().toLocaleDateString()} · ${b.items.length} items</div>
+    ${Object.entries(rooms).map(([room,items])=>`
+      <div class="roomhead">${esc(room)}</div>
+      ${items.map(i=>`<div class="eitem">
+        ${i.img?`<img src="${esc(i.img)}">`:''}
+        <div><div class="et">${esc(i.note&&i.note!=='(vendor — pick item)'?i.note:i.name)}</div>
+        <div class="ev">${esc(i.vendorName)} · ${i.status}</div></div>
+        <div class="ep">${money(i.price)}</div>
+      </div>`).join('')}`).join('')}
+    <div style="text-align:right;font-weight:800;font-size:16px;margin-top:16px">Total: ${money(b.items.reduce((s,i)=>s+(i.price||0),0))}</div>`;
+  window.print();
+}
+</script>
+</body>
+</html>
