@@ -172,6 +172,7 @@
 <div class="exportsheet" id="exportsheet"></div>
 
 <script>
+const BUILD='1783294376';
 let VENDORS=[], VBYID={}, TRADE={}, MANIFEST=null, KEY=null;
 const CHUNKS={};            // dept -> array of products (decrypted)
 let LOADING_DEPT=null;
@@ -211,7 +212,7 @@ function gateHTML(msg){
   </div>`;
 }
 async function unlockWith(pass){
-  const cb=await fetch('data/catalog.enc.json').then(r=>r.json());
+  const cb=await fetch('data/catalog.enc.json?b='+BUILD).then(r=>r.json());
   const key=await deriveKey(pass,b64(cb.salt));
   const cat=await decryptWith(key,cb);   // throws on wrong pass
   KEY=key;
@@ -239,7 +240,7 @@ async function loadDept(dept){
   if(CHUNKS[dept])return CHUNKS[dept];
   const meta=MANIFEST[dept]; if(!meta)return [];
   const files=meta.files||[meta.file];
-  const parts=await Promise.all(files.map(f=>fetch('data/'+f).then(r=>r.json()).then(b=>decryptWith(KEY,b))));
+  const parts=await Promise.all(files.map(f=>fetch('data/'+f+'?b='+BUILD).then(r=>r.json()).then(b=>decryptWith(KEY,b))));
   const prods=parts.flat();
   prods.forEach(p=>{const v=VBYID[p.v]; p._region=v?v.region:null;});
   CHUNKS[dept]=prods;
