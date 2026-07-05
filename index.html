@@ -226,8 +226,9 @@ boot();
 async function loadDept(dept){
   if(CHUNKS[dept])return CHUNKS[dept];
   const meta=MANIFEST[dept]; if(!meta)return [];
-  const blob=await fetch('data/'+meta.file).then(r=>r.json());
-  const prods=await decryptWith(KEY,blob);
+  const files=meta.files||[meta.file];
+  const parts=await Promise.all(files.map(f=>fetch('data/'+f).then(r=>r.json()).then(b=>decryptWith(KEY,b))));
+  const prods=parts.flat();
   prods.forEach(p=>{const v=VBYID[p.v]; p._region=v?v.region:null;});
   CHUNKS[dept]=prods;
   return prods;
