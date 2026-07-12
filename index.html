@@ -94,8 +94,15 @@
   .bitem .binfo{flex:1;min-width:0}
   .bitem .bname{font-weight:700;font-size:13.5px}
   .bitem .bvendor{font-size:12px;color:var(--muted)}
-  .bitem input.priceIn{width:90px;padding:5px 7px;border:1px solid var(--line);border-radius:7px;text-align:right}
+  .bitem input.priceIn{width:84px;padding:5px 7px;border:1px solid var(--line);border-radius:7px;text-align:right}
+  .bitem input.mkIn{width:56px;padding:5px 6px;border:1px solid var(--line);border-radius:7px;text-align:right}
+  .bitem input.cpIn{width:88px;padding:5px 7px;border:1px solid var(--brand-soft);background:var(--brand-soft);border-radius:7px;text-align:right;font-weight:700;color:var(--brand-dark)}
+  .bitem input.nameIn{width:100%;border:1px solid transparent;background:transparent;font-weight:700;font-size:13.5px;padding:2px 4px;margin-left:-4px;border-radius:6px}
+  .bitem input.nameIn:hover,.bitem input.nameIn:focus{border-color:var(--line);background:#fff;outline:none}
+  .bitem .col{display:flex;flex-direction:column;align-items:flex-end;gap:2px}
+  .bitem .col label{font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
   .bitem input.roomIn{width:105px;padding:5px 7px;border:1px solid var(--line);border-radius:7px}
+  .marginline{font-size:11.5px;color:var(--muted);margin-top:2px}
   .status{font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;border:none}
   .status.Considering{background:var(--chip);color:var(--muted)}
   .status.Specified{background:var(--brand-soft);color:var(--brand-dark)}
@@ -204,7 +211,7 @@
 <div class="exportsheet" id="exportsheet"></div>
 
 <script>
-const BUILD='1783294376';
+const BUILD='1783817835';
 let VENDORS=[], VBYID={}, TRADE={}, MANIFEST=null, KEY=null;
 const CHUNKS={};            // dept -> array of products (decrypted)
 let LOADING_DEPT=null;
@@ -217,7 +224,12 @@ const COLOR_LIST=['White','Cream / Ivory','Beige / Tan','Brown / Wood','Black','
 const SIZE_LIST=['3x5 & smaller','4x6','5x8','6x9','8x10','9x12','10x14 & larger','Runner','Round','Small (<24\")','Medium (24–48\")','Large (48–84\")','Extra Large (84\"+)'];
 const LS='sourcingSite.v1';
 let DB=(()=>{try{const d=JSON.parse(localStorage.getItem(LS)); if(d&&d.boards)return d;}catch(e){} return {boards:[], studio:'Hinden Studios'};})();
-DB.boards.forEach(b=>{ if(!('client'in b))b.client=''; if(!Array.isArray(b.rooms))b.rooms=[...new Set((b.items||[]).map(i=>i.room).filter(Boolean))]; if(!('showPrices'in b))b.showPrices=true; });
+DB.boards.forEach(b=>{ if(!('client'in b))b.client=''; if(!Array.isArray(b.rooms))b.rooms=[...new Set((b.items||[]).map(i=>i.room).filter(Boolean))]; if(!('showPrices'in b))b.showPrices=true; if(!('markup'in b))b.markup=0;
+  (b.items||[]).forEach(i=>{ if(!('cost'in i))i.cost=(i.price!=null?i.price:null); if(!('markup'in i))i.markup=null; if(!('clientPrice'in i))i.clientPrice=null; });});
+/* pricing: cost = what you pay · markup % (item overrides project default) · clientPrice = manual override */
+function mkPct(i,b){return i.markup!=null?i.markup:(b.markup||0);}
+function cprice(i,b){ if(i.clientPrice!=null)return i.clientPrice; if(i.cost==null)return null; return Math.round(i.cost*(1+mkPct(i,b)/100)); }
+function boardTotals(b){ let cost=0,client=0; b.items.forEach(i=>{cost+=(i.cost||0); client+=(cprice(i,b)||0);}); return {cost,client,margin:client-cost}; }
 function save(){localStorage.setItem(LS,JSON.stringify(DB));}
 function uid(){return Math.random().toString(36).slice(2,10);}
 function esc(s){return (s==null?'':String(s)).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
@@ -531,7 +543,8 @@ function newBoard(){
   const name=prompt('Project name:',''); if(!name)return null;
   const client=prompt('Client name (shown on the client portal):','')||'';
   const budget=parseFloat(prompt('Budget target (optional, $):','')||'')||null;
-  const b={id:uid(),name,client,budget,rooms:[],showPrices:true,items:[]}; DB.boards.push(b); S.activeBoard=b.id; save(); render(); return b;
+  const markup=parseFloat(prompt('Default markup % on items (e.g. 30 — you can override per item):','')||'')||0;
+  const b={id:uid(),name,client,budget,markup,rooms:[],showPrices:true,items:[]}; DB.boards.push(b); S.activeBoard=b.id; save(); render(); return b;
 }
 function findProduct(pid){
   for(const arr of Object.values(CHUNKS)){const p=arr.find(x=>x.id===pid); if(p)return p;}
@@ -541,13 +554,13 @@ function addProductToBoard(pid){
   let b=activeBoard(); if(!b){b=newBoard(); if(!b)return;}
   const p=findProduct(pid); if(!p)return;
   const room=b.rooms.length===1?b.rooms[0]:'';
-  b.items.push({id:uid(),kind:'product',refId:pid,name:p.t,vendorName:p.vn,img:p.img,room,price:p.p,status:'Considering',url:p.u,note:''});
+  b.items.push({id:uid(),kind:'product',refId:pid,name:p.t,vendorName:p.vn,img:p.img,room,cost:p.p,markup:null,clientPrice:null,status:'Considering',url:p.u,note:''});
   save(); toast(`Added → ${b.name}`); if(S.view==='boards')render();
 }
 function addVendorToBoard(vid){
   let b=activeBoard(); if(!b){b=newBoard(); if(!b)return;}
   const v=VBYID[vid]; if(!v)return;
-  b.items.push({id:uid(),kind:'vendor',refId:vid,name:v.name,vendorName:v.name,img:'',room:'',price:null,status:'Considering',url:v.url||'',note:'(vendor — pick item)'});
+  b.items.push({id:uid(),kind:'vendor',refId:vid,name:v.name,vendorName:v.name,img:'',room:'',cost:null,markup:null,clientPrice:null,status:'Considering',url:v.url||'',note:'(vendor — pick item)'});
   save(); toast(`Added ${v.name} → ${b.name}`); if(S.view==='boards')render();
 }
 function addRoom(){const b=activeBoard();if(!b)return;const n=prompt('Room name (e.g. Living Room, Primary Bedroom):','');if(!n)return;if(!b.rooms.includes(n))b.rooms.push(n);save();render();}
@@ -560,8 +573,8 @@ function renderBoards(m){
   const b=activeBoard();
   if(b&&S.clientView) return renderClientView(m,b);
   const opts=DB.boards.map(x=>`<option value="${x.id}" ${b&&x.id===b.id?'selected':''}>${esc(x.name)}${x.client?` — ${esc(x.client)}`:''}</option>`).join('');
-  const total=b?b.items.reduce((s,i)=>s+(i.price||0),0):0;
-  const over=b&&b.budget&&total>b.budget;
+  const tot=b?boardTotals(b):{cost:0,client:0,margin:0};
+  const over=b&&b.budget&&tot.client>b.budget;
   m.innerHTML=`
     <div class="boardbar">
       <select class="boardsel" onchange="S.activeBoard=this.value;render()">${opts||'<option>No projects yet</option>'}</select>
@@ -572,8 +585,9 @@ function renderBoards(m){
       <button class="btn" onclick="exportClipList()">Clip list</button>
       <button class="btn" onclick="exportSpec()">Spec sheet</button>
       <button class="btn primary" onclick="S.clientView=true;render()">👁 Client view</button>`:''}
-      ${b?`<div class="budgetbox"><div class="big ${over?'over':''}">${money(total)}</div>
-        <div class="${over?'over':''}">${b.budget?`of ${money(b.budget)} target${over?' — OVER':''}`:'no target set'}</div></div>`:''}
+      ${b?`<div class="budgetbox"><div class="big ${over?'over':''}">${money(tot.client)}</div>
+        <div class="${over?'over':''}">${b.budget?`of ${money(b.budget)} target${over?' — OVER':''}`:'client total'}</div>
+        <div class="marginline">cost ${money(tot.cost)} · margin <b>${money(tot.margin)}</b> · default markup <input type="number" value="${b.markup||0}" style="width:44px;padding:1px 4px;border:1px solid var(--line);border-radius:5px;text-align:right;font-size:11px" onchange="activeBoard().markup=parseFloat(this.value)||0;save();render()">%</div></div>`:''}
     </div>
     ${!b?`<div class="empty"><div class="big">📋</div>No projects yet — hit <b>+ New project</b>.</div>`
     : b.items.length===0?`<div class="empty"><div class="big">🕳️</div>Empty project. Browse <b>Products</b> and hit <b>+ Project</b> on anything good.</div>`
@@ -585,7 +599,7 @@ function roomGroupsHTML(b){
   return groups.map(room=>{
     const items=b.items.filter(i=>(i.room||'Unassigned')===room || (room==='Unassigned'&&!i.room));
     if(!items.length) return '';
-    const sub=items.reduce((s,i)=>s+(i.price||0),0);
+    const sub=items.reduce((s,i)=>s+(cprice(i,b)||0),0);
     return `<div class="roomgroup">
       <div class="roomtitle"><span>${esc(room)}</span><span class="roomsub">${items.length} item${items.length>1?'s':''} · ${money(sub)}</span></div>
       ${items.map(i=>bitem(i,b)).join('')}
@@ -595,27 +609,34 @@ function roomGroupsHTML(b){
 function bitem(i,b){
   const rooms=projRooms(b);
   const roomOpts=['<option value="">— room —</option>',...rooms.map(r=>`<option value="${esc(r)}" ${i.room===r?'selected':''}>${esc(r)}</option>`)].join('');
+  const cp=cprice(i,b);
   return `<div class="bitem">
-    ${i.img?`<img loading="lazy" src="${esc(i.img)}">`:`<div style="width:64px;height:64px;border-radius:8px;background:var(--chip)"></div>`}
+    ${i.img?`<img loading="lazy" src="${esc(i.img)}">`:`<div style="width:64px;height:64px;border-radius:8px;background:var(--chip);flex-shrink:0"></div>`}
     <div class="binfo">
-      <div class="bname">${esc(i.name)}</div>
+      <input class="nameIn" type="text" value="${esc(i.name)}" title="Item name — click to edit" onchange="editItem('${i.id}','name',this.value)">
       <div class="bvendor">${esc(i.vendorName)} ${i.url?` · <a href="${esc(i.url)}" target="_blank" rel="noopener">view ↗</a>`:''}</div>
       <input type="text" placeholder="note for client (what/where)…" value="${esc(i.note)}" style="width:100%;margin-top:4px;padding:4px 8px;border:1px solid var(--line);border-radius:7px;font-size:12px" onchange="editItem('${i.id}','note',this.value)">
     </div>
     <select class="roomIn" onchange="setRoom('${i.id}',this.value)">${roomOpts}</select>
-    <input class="priceIn" type="number" placeholder="$" value="${i.price!=null?i.price:''}" onchange="editItem('${i.id}','price',parseFloat(this.value)||null)">
+    <div class="col"><label>cost</label>
+      <input class="priceIn" type="number" placeholder="$" value="${i.cost!=null?i.cost:''}" onchange="editItem('${i.id}','cost',parseFloat(this.value)||null)"></div>
+    <div class="col"><label>markup</label>
+      <input class="mkIn" type="number" placeholder="${b.markup||0}" title="Markup % — blank uses project default (${b.markup||0}%)" value="${i.markup!=null?i.markup:''}" onchange="editItem('${i.id}','markup',this.value===''?null:parseFloat(this.value)||0)"></div>
+    <div class="col"><label>client</label>
+      <input class="cpIn" type="number" title="Client price — auto from cost + markup; type to override, blank to reset" placeholder="${cp!=null?cp:'—'}" value="${i.clientPrice!=null?i.clientPrice:(cp!=null?cp:'')}" onchange="editItem('${i.id}','clientPrice',this.value===''?null:parseFloat(this.value)||null)"></div>
     <button class="status ${i.status}" onclick="cycleStatus('${i.id}')">${i.status}</button>
     <button class="mini" onclick="removeItem('${i.id}')">✕</button>
   </div>`;
 }
 function setRoom(id,v){const b=activeBoard();const i=b.items.find(x=>x.id===id);if(i){i.room=v;if(v&&!b.rooms.includes(v))b.rooms.push(v);save();render();}}
-function editItem(id,k,v){const b=activeBoard();const i=b.items.find(x=>x.id===id);if(i){i[k]=v;save();if(k==='price')render();}}
+function editItem(id,k,v){const b=activeBoard();const i=b.items.find(x=>x.id===id);if(i){i[k]=v;save();if(['cost','markup','clientPrice'].includes(k))render();}}
 function cycleStatus(id){const o=['Considering','Specified','Ordered'];const b=activeBoard();const i=b.items.find(x=>x.id===id);i.status=o[(o.indexOf(i.status)+1)%3];save();render();}
 function removeItem(id){const b=activeBoard();b.items=b.items.filter(x=>x.id!==id);save();render();}
 function renameBoard(){const b=activeBoard();if(!b)return;
   const n=prompt('Project name:',b.name);if(n)b.name=n;
   const c=prompt('Client name (shown on client portal):',b.client||'');if(c!==null)b.client=c;
   const bud=prompt('Budget target ($, blank for none):',b.budget||'');b.budget=parseFloat(bud)||null;
+  const mk=prompt('Default markup % on items:',b.markup||0);if(mk!==null)b.markup=parseFloat(mk)||0;
   b.showPrices=confirm('Show prices to the client on the portal?  OK = show · Cancel = hide');
   save();render();}
 function deleteBoard(){const b=activeBoard();if(!b)return;if(!confirm(`Delete "${b.name}"?`))return;
@@ -625,11 +646,11 @@ function deleteBoard(){const b=activeBoard();if(!b)return;if(!confirm(`Delete "$
 function renderClientView(m,b){
   const rooms=projRooms(b);
   const groups=[...rooms,'Unassigned'];
-  const total=b.items.reduce((s,i)=>s+(i.price||0),0);
+  const total=b.items.reduce((s,i)=>s+(cprice(i,b)||0),0);
   const body=groups.map(room=>{
     const items=b.items.filter(i=>(i.room||'Unassigned')===room||(room==='Unassigned'&&!i.room));
     if(!items.length)return '';
-    const sub=items.reduce((s,i)=>s+(i.price||0),0);
+    const sub=items.reduce((s,i)=>s+(cprice(i,b)||0),0);
     return `<section class="cv-room">
       <div class="cv-roomhead"><h2>${esc(room)}</h2>${b.showPrices?`<span class="cv-sub">${money(sub)}</span>`:''}</div>
       <div class="cv-grid">
@@ -638,7 +659,7 @@ function renderClientView(m,b){
           <figcaption>
             <div class="cv-name">${esc(i.note&&i.note!=='(vendor — pick item)'?i.note:i.name)}</div>
             <div class="cv-vn">${esc(i.vendorName)}</div>
-            ${b.showPrices&&i.price!=null?`<div class="cv-price">${money(i.price)}</div>`:''}
+            ${b.showPrices&&cprice(i,b)!=null?`<div class="cv-price">${money(cprice(i,b))}</div>`:''}
           </figcaption>
         </figure>`).join('')}
       </div>
@@ -682,9 +703,9 @@ function exportSpec(){
         ${i.img?`<img src="${esc(i.img)}">`:''}
         <div><div class="et">${esc(i.note&&i.note!=='(vendor — pick item)'?i.note:i.name)}</div>
         <div class="ev">${esc(i.vendorName)} · ${i.status}</div></div>
-        <div class="ep">${money(i.price)}</div>
+        <div class="ep">${money(cprice(i,b))}</div>
       </div>`).join('')}`).join('')}
-    <div style="text-align:right;font-weight:800;font-size:16px;margin-top:16px">Total: ${money(b.items.reduce((s,i)=>s+(i.price||0),0))}</div>`;
+    <div style="text-align:right;font-weight:800;font-size:16px;margin-top:16px">Total: ${money(b.items.reduce((s,i)=>s+(cprice(i,b)||0),0))}</div>`;
   window.print();
 }
 </script>
