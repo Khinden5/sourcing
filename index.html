@@ -123,7 +123,39 @@
   .exportsheet .eitem .et{font-weight:700}
   .exportsheet .eitem .ev{color:#666;font-size:12px}
   .exportsheet .eitem .ep{margin-left:auto;font-weight:700;white-space:nowrap}
-  @media(max-width:760px){.rail{display:none}.main{padding:14px 12px 90px}}
+  /* projects: room grouping */
+  .roomgroup{margin-bottom:22px}
+  .roomtitle{display:flex;justify-content:space-between;align-items:baseline;border-bottom:2px solid var(--brand-soft);padding-bottom:5px;margin-bottom:10px}
+  .roomtitle span:first-child{font-weight:800;font-size:15px;letter-spacing:-.01em}
+  .roomtitle .roomsub{font-size:12.5px;color:var(--muted);font-weight:600}
+  select.roomIn{width:120px;padding:5px 6px;border:1px solid var(--line);border-radius:7px;background:#fff;font-size:12px}
+  /* client portal / presentation */
+  .cv-bar{display:flex;align-items:center;gap:12px;margin-bottom:18px}
+  .clientportal{max-width:1000px;margin:0 auto;background:#fff;border:1px solid var(--line);border-radius:14px;padding:40px 44px 48px}
+  .cv-head{text-align:center;border-bottom:1px solid var(--line);padding-bottom:22px;margin-bottom:28px}
+  .cv-studio{font-size:11px;letter-spacing:.28em;text-transform:uppercase;color:var(--brand);font-weight:700}
+  .cv-head h1{font-size:30px;margin:8px 0 4px;letter-spacing:-.02em;font-weight:800}
+  .cv-client{font-size:14px;color:var(--muted)}
+  .cv-meta{font-size:12.5px;color:var(--muted);margin-top:6px}
+  .cv-room{margin-bottom:34px;break-inside:avoid}
+  .cv-roomhead{display:flex;align-items:baseline;justify-content:space-between;border-bottom:1px solid var(--brand-soft);padding-bottom:6px;margin-bottom:16px}
+  .cv-roomhead h2{font-size:18px;margin:0;font-weight:700;color:var(--brand-dark)}
+  .cv-roomhead .cv-sub{font-size:13px;color:var(--muted);font-weight:600}
+  .cv-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:20px}
+  .cv-card{margin:0}
+  .cv-card img,.cv-card .cv-noimg{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:10px;background:var(--chip);display:block}
+  .cv-card figcaption{padding:8px 2px 0}
+  .cv-name{font-weight:600;font-size:13.5px;line-height:1.3}
+  .cv-vn{font-size:11.5px;color:var(--muted);margin-top:1px}
+  .cv-price{font-size:13px;font-weight:700;margin-top:3px}
+  @media(max-width:760px){.rail{display:none}.main{padding:14px 12px 90px}.clientportal{padding:24px 18px}}
+  @media print{
+    .no-print{display:none!important}
+    .clientportal{border:none;max-width:100%;padding:0}
+    .clientportal,.clientportal *{visibility:visible}
+    .topbar,.rail,.no-print{display:none!important}
+    .exportsheet:empty{display:none!important}
+  }
 </style>
 </head>
 <body>
@@ -133,7 +165,7 @@
   <div class="tabs">
     <button class="tab active" data-view="products" onclick="go('products')">Products</button>
     <button class="tab" data-view="vendors" onclick="go('vendors')">Vendors</button>
-    <button class="tab" data-view="boards" onclick="go('boards')">Boards</button>
+    <button class="tab" data-view="boards" onclick="go('boards')">Projects</button>
   </div>
   <div class="spacer"></div>
   <div class="count" id="topCount"></div>
@@ -177,14 +209,15 @@ let VENDORS=[], VBYID={}, TRADE={}, MANIFEST=null, KEY=null;
 const CHUNKS={};            // dept -> array of products (decrypted)
 let LOADING_DEPT=null;
 const S={view:'products', dept:null, sub:null, region:new Set(), vcats:new Set(), more:new Set(),
-  style:new Set(), era:new Set(), color:new Set(), size:new Set(), vsel:new Set(), sort:'rel', shown:120, activeBoard:null};
+  style:new Set(), era:new Set(), color:new Set(), size:new Set(), vsel:new Set(), sort:'rel', shown:120, activeBoard:null, clientView:false};
 function togVendor(vid){ S.vsel.has(vid)?S.vsel.delete(vid):S.vsel.add(vid); S.shown=120; render(); }
 const STYLE_LIST=['Mid-Century Modern','Scandinavian','Japandi / Japanese','Art Deco','Industrial','Bohemian','Traditional','Rustic / Farmhouse','Coastal','Minimalist','Postmodern / Memphis','Brutalist','Organic Modern','French','Hollywood Regency','Bauhaus / Modernist'];
 const ERA_LIST=['Antique (pre-1920)','1920s–40s','Mid-Century (1950s–70s)','1980s–90s','Vintage (general)'];
 const COLOR_LIST=['White','Cream / Ivory','Beige / Tan','Brown / Wood','Black','Gray','Green','Blue','Red / Burgundy','Pink / Blush','Orange / Rust','Yellow / Gold','Brass / Bronze','Silver / Chrome','Copper','Purple','Multicolor'];
 const SIZE_LIST=['3x5 & smaller','4x6','5x8','6x9','8x10','9x12','10x14 & larger','Runner','Round','Small (<24\")','Medium (24–48\")','Large (48–84\")','Extra Large (84\"+)'];
 const LS='sourcingSite.v1';
-let DB=(()=>{try{const d=JSON.parse(localStorage.getItem(LS)); if(d&&d.boards)return d;}catch(e){} return {boards:[]};})();
+let DB=(()=>{try{const d=JSON.parse(localStorage.getItem(LS)); if(d&&d.boards)return d;}catch(e){} return {boards:[], studio:'Hinden Studios'};})();
+DB.boards.forEach(b=>{ if(!('client'in b))b.client=''; if(!Array.isArray(b.rooms))b.rooms=[...new Set((b.items||[]).map(i=>i.room).filter(Boolean))]; if(!('showPrices'in b))b.showPrices=true; });
 function save(){localStorage.setItem(LS,JSON.stringify(DB));}
 function uid(){return Math.random().toString(36).slice(2,10);}
 function esc(s){return (s==null?'':String(s)).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
@@ -331,7 +364,7 @@ function filteredVendors(){
 }
 
 /* ---------- routing / render ---------- */
-function go(view){S.view=view;S.shown=120;
+function go(view){S.view=view;S.shown=120;if(view!=='boards')S.clientView=false;
   document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.view===view));
   document.getElementById('rail').style.display=(view==='boards')?'none':'';
   render();
@@ -456,7 +489,7 @@ function pcard(p){
       <div class="pvendor" style="cursor:pointer" title="Filter to this vendor" onclick="togVendor('${p.v}')">${esc(p.vn)} ${S.vsel.has(p.v)?'✓':''}</div>
       <div class="pprice">${money(p.p)} ${!p.a?'<span class="soldout">· sold out</span>':''}</div>
       <div class="pfoot">
-        <button class="mini primary" onclick="addProductToBoard('${p.id}')">+ Board</button>
+        <button class="mini primary" onclick="addProductToBoard('${p.id}')">+ Project</button>
         <a class="mini" href="${esc(p.u)}" target="_blank" rel="noopener">View ↗</a>
       </div>
     </div>
@@ -484,20 +517,21 @@ function renderVendors(m,base){
           <div class="pfoot">
             ${v.url?`<a class="mini" href="${esc(v.url)}" target="_blank" rel="noopener">Site ↗</a>`:''}
             ${v.productCount?`<button class="mini" onclick="S.vsel.clear();S.vsel.add('${v.id}');S.dept=null;go('products');ensureAll()">Browse products</button>`:''}
-            <button class="mini primary" onclick="addVendorToBoard('${v.id}')">+ Board</button>
+            <button class="mini primary" onclick="addVendorToBoard('${v.id}')">+ Project</button>
           </div>
         </div>`;
       }).join('')}
     </div>`;
 }
 
-/* ---------- boards ---------- */
+/* ---------- projects (client → rooms → items) ---------- */
 function boardById(id){return DB.boards.find(b=>b.id===id);}
 function activeBoard(){if(S.activeBoard&&boardById(S.activeBoard))return boardById(S.activeBoard);return DB.boards[0]||null;}
 function newBoard(){
-  const name=prompt('Board name (client / room):',''); if(!name)return null;
+  const name=prompt('Project name:',''); if(!name)return null;
+  const client=prompt('Client name (shown on the client portal):','')||'';
   const budget=parseFloat(prompt('Budget target (optional, $):','')||'')||null;
-  const b={id:uid(),name,budget,items:[]}; DB.boards.push(b); S.activeBoard=b.id; save(); render(); return b;
+  const b={id:uid(),name,client,budget,rooms:[],showPrices:true,items:[]}; DB.boards.push(b); S.activeBoard=b.id; save(); render(); return b;
 }
 function findProduct(pid){
   for(const arr of Object.values(CHUNKS)){const p=arr.find(x=>x.id===pid); if(p)return p;}
@@ -506,7 +540,8 @@ function findProduct(pid){
 function addProductToBoard(pid){
   let b=activeBoard(); if(!b){b=newBoard(); if(!b)return;}
   const p=findProduct(pid); if(!p)return;
-  b.items.push({id:uid(),kind:'product',refId:pid,name:p.t,vendorName:p.vn,img:p.img,room:'',price:p.p,status:'Considering',url:p.u,note:''});
+  const room=b.rooms.length===1?b.rooms[0]:'';
+  b.items.push({id:uid(),kind:'product',refId:pid,name:p.t,vendorName:p.vn,img:p.img,room,price:p.p,status:'Considering',url:p.u,note:''});
   save(); toast(`Added → ${b.name}`); if(S.view==='boards')render();
 }
 function addVendorToBoard(vid){
@@ -515,47 +550,116 @@ function addVendorToBoard(vid){
   b.items.push({id:uid(),kind:'vendor',refId:vid,name:v.name,vendorName:v.name,img:'',room:'',price:null,status:'Considering',url:v.url||'',note:'(vendor — pick item)'});
   save(); toast(`Added ${v.name} → ${b.name}`); if(S.view==='boards')render();
 }
+function addRoom(){const b=activeBoard();if(!b)return;const n=prompt('Room name (e.g. Living Room, Primary Bedroom):','');if(!n)return;if(!b.rooms.includes(n))b.rooms.push(n);save();render();}
+function projRooms(b){ // ordered room list = declared rooms + any used-but-undeclared, then Unassigned
+  const used=[...new Set(b.items.map(i=>i.room).filter(Boolean))];
+  const ordered=[...b.rooms]; used.forEach(r=>{if(!ordered.includes(r))ordered.push(r);});
+  return ordered;
+}
 function renderBoards(m){
   const b=activeBoard();
-  const opts=DB.boards.map(x=>`<option value="${x.id}" ${b&&x.id===b.id?'selected':''}>${esc(x.name)}</option>`).join('');
+  if(b&&S.clientView) return renderClientView(m,b);
+  const opts=DB.boards.map(x=>`<option value="${x.id}" ${b&&x.id===b.id?'selected':''}>${esc(x.name)}${x.client?` — ${esc(x.client)}`:''}</option>`).join('');
   const total=b?b.items.reduce((s,i)=>s+(i.price||0),0):0;
   const over=b&&b.budget&&total>b.budget;
   m.innerHTML=`
     <div class="boardbar">
-      <select class="boardsel" onchange="S.activeBoard=this.value;render()">${opts||'<option>No boards yet</option>'}</select>
-      <button class="btn" onclick="newBoard()">+ New board</button>
-      ${b?`<button class="btn" onclick="renameBoard()">Rename / budget</button>
+      <select class="boardsel" onchange="S.activeBoard=this.value;render()">${opts||'<option>No projects yet</option>'}</select>
+      <button class="btn" onclick="newBoard()">+ New project</button>
+      ${b?`<button class="btn" onclick="addRoom()">+ Room</button>
+      <button class="btn" onclick="renameBoard()">Edit</button>
       <button class="btn danger" onclick="deleteBoard()">Delete</button>
       <button class="btn" onclick="exportClipList()">Clip list</button>
-      <button class="btn primary" onclick="exportSpec()">Spec sheet</button>`:''}
+      <button class="btn" onclick="exportSpec()">Spec sheet</button>
+      <button class="btn primary" onclick="S.clientView=true;render()">👁 Client view</button>`:''}
       ${b?`<div class="budgetbox"><div class="big ${over?'over':''}">${money(total)}</div>
         <div class="${over?'over':''}">${b.budget?`of ${money(b.budget)} target${over?' — OVER':''}`:'no target set'}</div></div>`:''}
     </div>
-    ${!b?`<div class="empty"><div class="big">📋</div>No boards yet — hit <b>+ New board</b>.</div>`
-    : b.items.length===0?`<div class="empty"><div class="big">🕳️</div>Empty board. Browse <b>Products</b> and hit <b>+ Board</b>.</div>`
-    : b.items.map(bitem).join('')}`;
+    ${!b?`<div class="empty"><div class="big">📋</div>No projects yet — hit <b>+ New project</b>.</div>`
+    : b.items.length===0?`<div class="empty"><div class="big">🕳️</div>Empty project. Browse <b>Products</b> and hit <b>+ Project</b> on anything good.</div>`
+    : roomGroupsHTML(b)}`;
 }
-function bitem(i){
+function roomGroupsHTML(b){
+  const rooms=projRooms(b);
+  const groups=[...rooms,'Unassigned'];
+  return groups.map(room=>{
+    const items=b.items.filter(i=>(i.room||'Unassigned')===room || (room==='Unassigned'&&!i.room));
+    if(!items.length) return '';
+    const sub=items.reduce((s,i)=>s+(i.price||0),0);
+    return `<div class="roomgroup">
+      <div class="roomtitle"><span>${esc(room)}</span><span class="roomsub">${items.length} item${items.length>1?'s':''} · ${money(sub)}</span></div>
+      ${items.map(i=>bitem(i,b)).join('')}
+    </div>`;
+  }).join('') || b.items.map(i=>bitem(i,b)).join('');
+}
+function bitem(i,b){
+  const rooms=projRooms(b);
+  const roomOpts=['<option value="">— room —</option>',...rooms.map(r=>`<option value="${esc(r)}" ${i.room===r?'selected':''}>${esc(r)}</option>`)].join('');
   return `<div class="bitem">
     ${i.img?`<img loading="lazy" src="${esc(i.img)}">`:`<div style="width:64px;height:64px;border-radius:8px;background:var(--chip)"></div>`}
     <div class="binfo">
       <div class="bname">${esc(i.name)}</div>
       <div class="bvendor">${esc(i.vendorName)} ${i.url?` · <a href="${esc(i.url)}" target="_blank" rel="noopener">view ↗</a>`:''}</div>
-      <input type="text" placeholder="note…" value="${esc(i.note)}" style="width:100%;margin-top:4px;padding:4px 8px;border:1px solid var(--line);border-radius:7px;font-size:12px" onchange="editItem('${i.id}','note',this.value)">
+      <input type="text" placeholder="note for client (what/where)…" value="${esc(i.note)}" style="width:100%;margin-top:4px;padding:4px 8px;border:1px solid var(--line);border-radius:7px;font-size:12px" onchange="editItem('${i.id}','note',this.value)">
     </div>
-    <input class="roomIn" placeholder="Room" value="${esc(i.room)}" onchange="editItem('${i.id}','room',this.value)">
+    <select class="roomIn" onchange="setRoom('${i.id}',this.value)">${roomOpts}</select>
     <input class="priceIn" type="number" placeholder="$" value="${i.price!=null?i.price:''}" onchange="editItem('${i.id}','price',parseFloat(this.value)||null)">
     <button class="status ${i.status}" onclick="cycleStatus('${i.id}')">${i.status}</button>
     <button class="mini" onclick="removeItem('${i.id}')">✕</button>
   </div>`;
 }
+function setRoom(id,v){const b=activeBoard();const i=b.items.find(x=>x.id===id);if(i){i.room=v;if(v&&!b.rooms.includes(v))b.rooms.push(v);save();render();}}
 function editItem(id,k,v){const b=activeBoard();const i=b.items.find(x=>x.id===id);if(i){i[k]=v;save();if(k==='price')render();}}
 function cycleStatus(id){const o=['Considering','Specified','Ordered'];const b=activeBoard();const i=b.items.find(x=>x.id===id);i.status=o[(o.indexOf(i.status)+1)%3];save();render();}
 function removeItem(id){const b=activeBoard();b.items=b.items.filter(x=>x.id!==id);save();render();}
-function renameBoard(){const b=activeBoard();if(!b)return;const n=prompt('Board name:',b.name);if(n)b.name=n;
-  const bud=prompt('Budget target ($, blank for none):',b.budget||'');b.budget=parseFloat(bud)||null;save();render();}
+function renameBoard(){const b=activeBoard();if(!b)return;
+  const n=prompt('Project name:',b.name);if(n)b.name=n;
+  const c=prompt('Client name (shown on client portal):',b.client||'');if(c!==null)b.client=c;
+  const bud=prompt('Budget target ($, blank for none):',b.budget||'');b.budget=parseFloat(bud)||null;
+  b.showPrices=confirm('Show prices to the client on the portal?  OK = show · Cancel = hide');
+  save();render();}
 function deleteBoard(){const b=activeBoard();if(!b)return;if(!confirm(`Delete "${b.name}"?`))return;
   DB.boards=DB.boards.filter(x=>x.id!==b.id);S.activeBoard=null;save();render();}
+
+/* ---------- client portal / presentation ---------- */
+function renderClientView(m,b){
+  const rooms=projRooms(b);
+  const groups=[...rooms,'Unassigned'];
+  const total=b.items.reduce((s,i)=>s+(i.price||0),0);
+  const body=groups.map(room=>{
+    const items=b.items.filter(i=>(i.room||'Unassigned')===room||(room==='Unassigned'&&!i.room));
+    if(!items.length)return '';
+    const sub=items.reduce((s,i)=>s+(i.price||0),0);
+    return `<section class="cv-room">
+      <div class="cv-roomhead"><h2>${esc(room)}</h2>${b.showPrices?`<span class="cv-sub">${money(sub)}</span>`:''}</div>
+      <div class="cv-grid">
+        ${items.map(i=>`<figure class="cv-card">
+          ${i.img?`<img loading="lazy" src="${esc(i.img)}" alt="">`:`<div class="cv-noimg"></div>`}
+          <figcaption>
+            <div class="cv-name">${esc(i.note&&i.note!=='(vendor — pick item)'?i.note:i.name)}</div>
+            <div class="cv-vn">${esc(i.vendorName)}</div>
+            ${b.showPrices&&i.price!=null?`<div class="cv-price">${money(i.price)}</div>`:''}
+          </figcaption>
+        </figure>`).join('')}
+      </div>
+    </section>`;
+  }).join('');
+  m.innerHTML=`
+    <div class="cv-bar no-print">
+      <button class="btn" onclick="S.clientView=false;render()">← Back to editing</button>
+      <span style="color:var(--muted);font-size:12.5px">Client-facing preview — trade info &amp; statuses hidden${b.showPrices?'':' · prices hidden'}</span>
+      <button class="btn primary" style="margin-left:auto" onclick="window.print()">Print / Save PDF</button>
+    </div>
+    <div class="clientportal">
+      <header class="cv-head">
+        <div class="cv-studio">${esc(DB.studio||'')}</div>
+        <h1>${esc(b.name)}</h1>
+        ${b.client?`<div class="cv-client">Prepared for ${esc(b.client)}</div>`:''}
+        <div class="cv-meta">${b.items.length} selections${b.showPrices?` · ${money(total)} total`:''}</div>
+      </header>
+      ${body||'<div class="empty">No items yet.</div>'}
+    </div>`;
+}
 function exportClipList(){
   const b=activeBoard();if(!b)return;
   const urls=b.items.filter(i=>i.url).map(i=>`${i.name} — ${i.url}`);
