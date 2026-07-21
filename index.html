@@ -193,7 +193,8 @@
       <h4>Color</h4><div id="fColor"></div>
       <h4>Size</h4><div id="fSize"></div>
       <h4>Region · shipping</h4><div id="fRegion"></div>
-      <div style="margin-top:6px"><span class="fchip" style="background:var(--brand-soft);color:var(--brand-dark);font-weight:600" onclick="presetVintageLA()">★ Vintage · Los Angeles</span></div>
+      <div style="margin-top:6px"><span class="fchip" style="background:var(--brand-soft);color:var(--brand-dark);font-weight:600" onclick="presetVintageLA()">★ Vintage · Los Angeles</span>
+      <span class="fchip" style="background:var(--brand-soft);color:var(--brand-dark);font-weight:600" onclick="presetNewWeek()">🆕 New this week</span></div>
       <h4>Vendors</h4>
       <input class="search" id="qVendor" placeholder="Search vendors…" oninput="debounceRender()">
       <div id="fVendorSel" style="margin-top:6px"></div>
@@ -211,7 +212,7 @@
 <div class="exportsheet" id="exportsheet"></div>
 
 <script>
-const BUILD='1783817835';
+const BUILD='1784596831';
 let VENDORS=[], VBYID={}, TRADE={}, MANIFEST=null, KEY=null;
 const CHUNKS={};            // dept -> array of products (decrypted)
 let LOADING_DEPT=null;
@@ -236,6 +237,9 @@ function esc(s){return (s==null?'':String(s)).replace(/[&<>"']/g,c=>({'&':'&amp;
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(t._x);t._x=setTimeout(()=>t.classList.remove('show'),1900);}
 function money(n){return n==null?'—':'$'+Number(n).toLocaleString(undefined,{maximumFractionDigits:0});}
 const REGIONS=['Los Angeles','California (other)','US West','US East','US South','US Midwest','US (other)','UK','Europe','International'];
+function ageDays(p){ if(!p.d)return null; const t=Date.parse(p.d); return isNaN(t)?null:(Date.now()-t)/864e5; }
+function isNewWeek(p){const a=ageDays(p);return a!=null&&a<=7;}
+function isNewMonth(p){const a=ageDays(p);return a!=null&&a<=31;}
 const b64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
 
 /* ---------- crypto ---------- */
@@ -322,7 +326,8 @@ function chipRow(el,list,set,counts){
     const v=c.dataset.v;
     const map={fRegion:S.region,fVendorTags:S.vcats,fMore:S.more,fStyle:S.style,fEra:S.era,fColor:S.color,fSize:S.size};
     const s=map[el.id]||S.more;
-    s.has(v)?s.delete(v):s.add(v); S.shown=120; render();
+    s.has(v)?s.delete(v):s.add(v); S.shown=120;
+    if(/^New this /.test(v)&&s.has(v)&&S.view==='products'&&!S.dept){ensureAll().then(()=>render());}else{render();}
   });
 }
 function clearFilters(){
@@ -336,6 +341,11 @@ function presetVintageLA(){
   S.vcats.add('Antiques & Vintage'); S.vcats.add('Marketplace & Resale');
   S.region.add('Los Angeles');
   go('vendors');
+}
+function presetNewWeek(){
+  clearFilters(); S.dept=null; S.sub=null;
+  S.more.add('New this week'); S.sort='newest';
+  go('products'); ensureAll().then(()=>render());
 }
 function vendorMatchesTags(v){ return !S.vcats.size || v.categories.some(c=>S.vcats.has(c)); }
 function currentProducts(){
@@ -357,6 +367,8 @@ function currentProducts(){
     if(S.vcats.size){const v=VBYID[p.v]; if(!v||!v.categories.some(c=>S.vcats.has(c)))return false;}
     if(S.more.has('In stock only')&&!p.a)return false;
     if(S.more.has('Has price')&&p.p==null)return false;
+    if(S.more.has('New this week')&&!isNewWeek(p))return false;
+    if(S.more.has('New this month')&&!isNewMonth(p))return false;
     if(mn!=null&&(p.p==null||p.p<mn))return false;
     if(mx!=null&&(p.p==null||p.p>mx))return false;
     if(q){const hay=(p.t+' '+p.vn+' '+p.ty).toLowerCase(); if(!hay.includes(q))return false;}
@@ -428,7 +440,7 @@ function render(){
   chipRow(document.getElementById('fSize'),withCounts(SIZE_LIST,fc.sz,S.size),S.size,fc.sz);
   const allTags=[...new Set(VENDORS.flatMap(v=>v.categories))].sort();
   chipRow(document.getElementById('fVendorTags'),allTags,S.vcats);
-  chipRow(document.getElementById('fMore'),['In stock only','Has price'],S.more);
+  chipRow(document.getElementById('fMore'),['New this week','New this month','In stock only','Has price'],S.more);
   document.getElementById('topCount').textContent=`${totalAll.toLocaleString()} products · ${VENDORS.length.toLocaleString()} vendors`;
   const m=document.getElementById('main');
   if(S.view==='products'){ S.dept?renderDeptPage(m):renderLanding(m); }
@@ -438,8 +450,9 @@ function render(){
 
 function renderLanding(m){
   const q=document.getElementById('q').value.trim();
-  if((q||S.vsel.size)&&Object.keys(CHUNKS).length===Object.keys(MANIFEST).length){
-    const title=q?`Search: “${esc(q)}”`:[...S.vsel].map(v=>esc(VBYID[v]?.name||'')).join(' + ');
+  const newFilt=S.more.has('New this week')||S.more.has('New this month');
+  if((q||S.vsel.size||newFilt)&&Object.keys(CHUNKS).length===Object.keys(MANIFEST).length){
+    const title=q?`Search: “${esc(q)}”`:S.vsel.size?[...S.vsel].map(v=>esc(VBYID[v]?.name||'')).join(' + '):(S.more.has('New this week')?'🆕 New this week':'🆕 New this month');
     return renderGrid(m,currentProducts(),title,'');
   }
   m.innerHTML=`
@@ -475,6 +488,7 @@ function gridHTML(list){
       <span class="res"><strong>${list.length.toLocaleString()}</strong> items from <strong>${new Set(list.map(p=>p.v)).size}</strong> vendors</span>
       <select onchange="S.sort=this.value;render()">
         <option value="rel" ${S.sort==='rel'?'selected':''}>Sort: Default</option>
+        <option value="newest" ${S.sort==='newest'?'selected':''}>Newest first</option>
         <option value="priceAsc" ${S.sort==='priceAsc'?'selected':''}>Price ↑</option>
         <option value="priceDesc" ${S.sort==='priceDesc'?'selected':''}>Price ↓</option>
         <option value="name" ${S.sort==='name'?'selected':''}>Name</option>
@@ -487,6 +501,7 @@ function gridHTML(list){
 }
 function sortProducts(list){
   const s=S.sort,c=[...list];
+  if(s==='newest')c.sort((a,b)=>(b.d||'').localeCompare(a.d||''));
   if(s==='priceAsc')c.sort((a,b)=>(a.p??1e12)-(b.p??1e12));
   if(s==='priceDesc')c.sort((a,b)=>(b.p??-1)-(a.p??-1));
   if(s==='name')c.sort((a,b)=>a.t.localeCompare(b.t));
@@ -494,7 +509,8 @@ function sortProducts(list){
   return c;
 }
 function pcard(p){
-  return `<div class="pcard">
+  return `<div class="pcard" style="position:relative">
+    ${isNewWeek(p)?'<span style="position:absolute;top:8px;left:8px;background:var(--brand);color:#fff;font-size:10px;font-weight:800;padding:2px 8px;border-radius:12px;letter-spacing:.05em">NEW</span>':''}
     ${p.img?`<img class="pimg" loading="lazy" src="${esc(p.img)}" alt="">`:`<div class="pimg"></div>`}
     <div class="pbody">
       <div class="ptitle">${esc(p.t)}</div>
